@@ -1,6 +1,6 @@
 class ZDBk::List
-  include DrbUndumped
   include Enumerable
+  
   def initialize(database)
     @database = database
     @dumped = []
@@ -9,9 +9,13 @@ class ZDBk::List
   end
   
   def _dump(depth)
-    new_list = clone
-    new_list.instance_variable_set("@#{undumped}",nil)
-    Marshal.dump(new_list)
+    save
+    Marshal.dump(@dumped)
+  end
+  def self._load(str)
+    res = new(nil)
+    res.instance_variable_set("@dumped",Marshal.load(str))
+    res
   end
   
   def [](index)
@@ -22,20 +26,27 @@ class ZDBk::List
     load
     @undumped[index] = Marshal.dump(value)
   end
+  
   def push(obj)
     load
     @undumped.push obj
   end
-  alias_method :<< :push
+  alias_method :<<, :push
+  
   def each
     load
     @dumped.each{|x| yield x}
   end
   
   def save
+    return if @locked
+    load
     @dumped = @undumped.map{|x| Marshal.dump(x)}
     @database.save
   end
+  
+  def lock!; @locked = true; end
+  def unlock!; @locked = nil; end
   
   private
   def load
