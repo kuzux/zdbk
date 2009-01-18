@@ -1,20 +1,20 @@
 class ZDBk::List
   include Enumerable
   
+  attr_accessor :database
   def initialize(database)
     @database = database
-    @dumped = []
+    @dumped = nil
     @undumped = nil
     @loaded = false
   end
   
   def _dump(depth)
-    save
     Marshal.dump(@dumped)
   end
   def self._load(str)
     res = new(nil)
-    res.instance_variable_set("@dumped",Marshal.load(str))
+    res.dumped = Marshal.load(str)
     res
   end
   
@@ -38,20 +38,32 @@ class ZDBk::List
     @dumped.each{|x| yield x}
   end
   
+  def length
+    load
+    @undumped.length
+  end
+  alias_method :size, :length
+  
   def save
-    return if @locked
     load
     @dumped = @undumped.map{|x| Marshal.dump(x)}
     @database.save
   end
   
-  def lock!; @locked = true; end
-  def unlock!; @locked = nil; end
+  def to_a
+    @undumped
+  end
+  
+  def dumped=(a)
+    @dumped = a
+  end
   
   private
   def load
+    p @loaded
     return if @loaded
     @loaded = true
     @undumped = @dumped.map{|x| Marshal.load(x)}
+    @undumped ||= []
   end
 end
